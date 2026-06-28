@@ -1,0 +1,6 @@
+{
+  "name": "SMS PRO",
+  "description": "School Management System - Client Application connecting native Android to Google Sheets via Google Apps Script API.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
