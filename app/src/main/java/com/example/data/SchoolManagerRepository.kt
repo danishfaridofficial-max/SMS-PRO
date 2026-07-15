@@ -95,7 +95,7 @@ class SchoolManagerRepository(
         set(value) = prefs.edit().putBoolean("is_dashboard_loaded_preference", value).apply()
 
     var isNoticeEnabled: Boolean
-        get() = prefs.getBoolean("is_notice_enabled", true)
+        get() = prefs.getBoolean("is_notice_enabled", false)
         set(value) = prefs.edit().putBoolean("is_notice_enabled", value).apply()
 
     var noticeTitle: String
@@ -120,7 +120,7 @@ class SchoolManagerRepository(
         fun processResponse(res: NoticeResponse): NoticeResponse {
             val enabledObj = res.isNoticeEnabled
             val enabled = if (enabledObj == null) {
-                true
+                false
             } else {
                 val str = enabledObj.toString().trim().lowercase()
                 str == "true" || str == "1" || str == "1.0"
