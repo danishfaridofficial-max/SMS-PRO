@@ -90,7 +90,7 @@ function doGet(e) {
     
     if (action === "processStudent") {
       const obj = {
-        targetSheetId: e.parameter.targetSheetId || MASTER_SHEET_ID,
+        targetSheetId: e.parameter.targetSheetId || e.parameter.sheetId || MASTER_SHEET_ID,
         className: e.parameter.className,
         rowId: e.parameter.rowId ? parseInt(e.parameter.rowId) : null,
         stdId: e.parameter.stdId ? parseInt(e.parameter.stdId) : null,

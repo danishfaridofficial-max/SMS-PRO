@@ -40,6 +40,7 @@ interface NetworkService {
         @Url url: String,
         @Query("action") action: String = "processStudent",
         @Query("targetSheetId") targetSheetId: String,
+        @Query("sheetId") sheetId: String,
         @Query("className") className: String,
         @Query("rowId") rowId: Int?,
         @Query("stdId") stdId: Int?,

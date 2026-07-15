@@ -290,6 +290,7 @@ class SchoolManagerRepository(
                     val networkRes = api.processStudent(
                         url = webAppUrl,
                         targetSheetId = sheetId,
+                        sheetId = sheetId,
                         className = studentWithLocalId.className,
                         rowId = studentWithLocalId.rowId,
                         stdId = studentWithLocalId.stdId,
@@ -379,6 +380,7 @@ class SchoolManagerRepository(
                     val networkRes = api.processStudent(
                         url = webAppUrl,
                         targetSheetId = sheetId,
+                        sheetId = sheetId,
                         className = st.className,
                         rowId = null,
                         stdId = st.stdId,
