@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import kotlinx.coroutines.launch
 import com.example.data.LocalDatabase
 import com.example.data.SchoolManagerRepository
 import com.example.ui.screens.DashboardScreen
@@ -38,6 +39,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             var themePref by remember { mutableStateOf(repository.themePreference) }
+            val coroutineScope = rememberCoroutineScope()
 
             MyApplicationTheme(themePreference = themePref) {
                 Surface(modifier = Modifier.fillMaxSize()) {
@@ -74,8 +76,10 @@ class MainActivity : ComponentActivity() {
                                 DashboardScreen(
                                     repository = repository,
                                     onLogout = {
-                                        repository.logout()
-                                        currentScreen = Screen.LOGIN
+                                        coroutineScope.launch {
+                                            repository.logout()
+                                            currentScreen = Screen.LOGIN
+                                        }
                                     },
                                     onNavigateToSettings = {
                                         previousScreen = Screen.DASHBOARD

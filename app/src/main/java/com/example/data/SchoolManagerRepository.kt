@@ -111,31 +111,55 @@ class SchoolManagerRepository(
         set(value) = prefs.edit().putString("notice_action_url", value).apply()
 
     suspend fun fetchNoticeSettings(): Result<NoticeResponse> {
-        if (webAppUrl.isNotEmpty()) {
+        if (webAppUrl.isEmpty()) {
+            return Result.failure(Exception("WebApp Url is missing"))
+        }
+
+        val masterSheetId = "1FjN6mi26dAXfJZixfNICuhlpVoEdPSbyHRURZo5Ztzs"
+
+        fun processResponse(res: NoticeResponse): NoticeResponse {
+            val enabledObj = res.isNoticeEnabled
+            val enabled = when (enabledObj) {
+                is Boolean -> enabledObj
+                is Number -> enabledObj.toInt() == 1
+                is String -> enabledObj.trim().lowercase() == "true" || enabledObj.trim() == "1"
+                else -> true
+            }
+            isNoticeEnabled = enabled
+            res.title?.let { noticeTitle = it }
+            res.message?.let { noticeMessage = it }
+            res.actionUrl?.let { noticeActionUrl = it }
+            return res
+        }
+
+        // Try fetching notice from the active school's sheet
+        try {
+            val res = api.getNotice(url = webAppUrl, sheetId = sheetId)
+            if (res.success) {
+                return Result.success(processResponse(res))
+            } else {
+                Log.w("SchoolRepo", "Notice fetch failed on current sheetId ($sheetId): ${res.msg}, trying master sheet")
+            }
+        } catch (e: Exception) {
+            Log.e("SchoolRepo", "Notice fetch exception on current sheetId ($sheetId), trying master sheet", e)
+        }
+
+        // If active school's sheet fails and it's not already the master sheet, fallback to master sheet
+        if (sheetId != masterSheetId) {
             try {
-                val res = api.getNotice(url = webAppUrl, sheetId = sheetId)
+                val res = api.getNotice(url = webAppUrl, sheetId = masterSheetId)
                 if (res.success) {
-                    val enabledObj = res.isNoticeEnabled
-                    val enabled = when (enabledObj) {
-                        is Boolean -> enabledObj
-                        is Number -> enabledObj.toInt() == 1
-                        is String -> enabledObj.trim().lowercase() == "true" || enabledObj.trim() == "1"
-                        else -> true
-                    }
-                    isNoticeEnabled = enabled
-                    res.title?.let { noticeTitle = it }
-                    res.message?.let { noticeMessage = it }
-                    res.actionUrl?.let { noticeActionUrl = it }
-                    return Result.success(res)
+                    return Result.success(processResponse(res))
                 } else {
-                    return Result.failure(Exception(res.msg ?: "Notice service failed"))
+                    return Result.failure(Exception(res.msg ?: "Notice service failed on master sheet"))
                 }
             } catch (e: Exception) {
-                Log.e("SchoolRepo", "Failed fetching dynamic dynamic notice config", e)
+                Log.e("SchoolRepo", "Failed fetching notice on master sheet fallback", e)
                 return Result.failure(e)
             }
         }
-        return Result.failure(Exception("WebApp Url is missing"))
+
+        return Result.failure(Exception("Notice service failed on both active and master sheets"))
     }
 
     // Retrieve active student list flow
@@ -470,9 +494,11 @@ class SchoolManagerRepository(
         }
     }
 
-    fun logout() {
+    suspend fun logout() = withContext(Dispatchers.IO) {
         isLoggedIn = false
         isDashboardLoadedPreference = false
-        // Keep credentials but mark login flag as false
+        studentDao.clearAll()
+        // Reset active class to default
+        activeClassPreference = "Class 1"
     }
 }
