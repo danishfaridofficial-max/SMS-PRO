@@ -89,7 +89,8 @@ fun DashboardScreen(
     var loaderMessage by remember { mutableStateOf("") }
     var clockString by remember { mutableStateOf("") }
     var isInitialScreenLoading by remember { mutableStateOf(true) }
-    var showNoticeAnnouncementDialog by remember { mutableStateOf(repository.isNoticeEnabled) }
+    var showNoticeAnnouncementDialog by remember { mutableStateOf(false) }
+    var isNoticeDismissed by remember { mutableStateOf(false) }
     val contentAlpha by animateFloatAsState(
         targetValue = if (isInitialScreenLoading) 0f else 1f,
         animationSpec = tween(durationMillis = 400)
@@ -230,9 +231,12 @@ fun DashboardScreen(
                     if (repository.isCloudMode) {
                         repository.fetchNoticeSettings()
                     }
-                    showNoticeAnnouncementDialog = repository.isNoticeEnabled
                 } catch (ne: Exception) {
                     Log.e("InitialLoadNotice", "Failed fetching notice from server", ne)
+                } finally {
+                    if (repository.isCloudMode && !isNoticeDismissed) {
+                        showNoticeAnnouncementDialog = repository.isNoticeEnabled
+                    }
                 }
 
                 // Phase 1: Seed default mock student lists if offline/fresh database
@@ -1811,7 +1815,10 @@ fun DashboardScreen(
     if (showNoticeAnnouncementDialog && repository.isNoticeEnabled) {
         val noticeUrl = repository.noticeActionUrl
         AlertDialog(
-            onDismissRequest = { showNoticeAnnouncementDialog = false },
+            onDismissRequest = { 
+                showNoticeAnnouncementDialog = false 
+                isNoticeDismissed = true
+            },
             icon = {
                 Box(
                     modifier = Modifier
@@ -1849,7 +1856,10 @@ fun DashboardScreen(
             },
             dismissButton = {
                 OutlinedButton(
-                    onClick = { showNoticeAnnouncementDialog = false },
+                    onClick = { 
+                        showNoticeAnnouncementDialog = false 
+                        isNoticeDismissed = true
+                    },
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1863,6 +1873,7 @@ fun DashboardScreen(
                 Button(
                     onClick = {
                         showNoticeAnnouncementDialog = false
+                        isNoticeDismissed = true
                         if (noticeUrl.isNotBlank()) {
                             try {
                                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse(noticeUrl))

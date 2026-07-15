@@ -265,7 +265,7 @@ function getNotice(sheetId) {
     const settings = {};
     for (let i = 1; i < data.length; i++) {
       const key = data[i][0] ? data[i][0].toString().trim() : "";
-      const val = data[i][1] ? data[i][1].toString().trim() : "";
+      const val = (data[i][1] !== undefined && data[i][1] !== null && data[i][1] !== "") ? data[i][1].toString().trim() : "";
       if (key) {
         settings[key] = val;
       }

@@ -119,11 +119,11 @@ class SchoolManagerRepository(
 
         fun processResponse(res: NoticeResponse): NoticeResponse {
             val enabledObj = res.isNoticeEnabled
-            val enabled = when (enabledObj) {
-                is Boolean -> enabledObj
-                is Number -> enabledObj.toInt() == 1
-                is String -> enabledObj.trim().lowercase() == "true" || enabledObj.trim() == "1"
-                else -> true
+            val enabled = if (enabledObj == null) {
+                true
+            } else {
+                val str = enabledObj.toString().trim().lowercase()
+                str == "true" || str == "1" || str == "1.0"
             }
             isNoticeEnabled = enabled
             res.title?.let { noticeTitle = it }
