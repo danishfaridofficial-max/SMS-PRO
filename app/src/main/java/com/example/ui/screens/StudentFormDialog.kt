@@ -22,6 +22,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -29,6 +31,49 @@ import androidx.compose.ui.window.DialogProperties
 import com.example.data.Student
 import java.text.SimpleDateFormat
 import java.util.*
+
+fun getFormattedCnicValue(newValue: TextFieldValue): TextFieldValue {
+    val originalText = newValue.text
+    val originalSelection = newValue.selection
+    val digitsOnly = originalText.filter { it.isDigit() }.take(13)
+    val cursorOffset = originalSelection.start
+    val digitsBeforeCursor = originalText.take(cursorOffset).count { it.isDigit() }
+    
+    val formatted = StringBuilder()
+    var newCursorOffset = 0
+    var digitIndex = 0
+    
+    for (i in 0 until digitsOnly.length) {
+        if (digitIndex == 5) {
+            formatted.append("-")
+        }
+        if (digitIndex == 12) {
+            formatted.append("-")
+        }
+        
+        formatted.append(digitsOnly[i])
+        digitIndex++
+        
+        if (digitIndex == digitsBeforeCursor) {
+            newCursorOffset = formatted.length
+        }
+    }
+    
+    if (digitsBeforeCursor == 0) {
+        newCursorOffset = 0
+    } else if (digitsBeforeCursor > digitsOnly.length) {
+        newCursorOffset = formatted.length
+    }
+    
+    if (originalSelection.start == originalText.length) {
+        newCursorOffset = formatted.length
+    }
+    
+    return TextFieldValue(
+        text = formatted.toString(),
+        selection = TextRange(newCursorOffset)
+    )
+}
 
 fun formatCnic(input: String): String {
     val digitsOnly = input.filter { it.isDigit() }.take(13)
@@ -125,8 +170,24 @@ fun StudentFormDialog(
     var stdFname by remember { mutableStateOf(studentToEdit?.stdFname ?: "") }
     var dob by remember { mutableStateOf(studentToEdit?.dob ?: "") }
     var gender by remember { mutableStateOf(studentToEdit?.gender ?: "Male") }
-    var cnic by remember { mutableStateOf(studentToEdit?.cnic ?: "") }
-    var fCnic by remember { mutableStateOf(studentToEdit?.fCnic ?: "") }
+    var cnicValue by remember {
+        mutableStateOf(
+            TextFieldValue(
+                text = formatCnic(studentToEdit?.cnic ?: ""),
+                selection = TextRange(formatCnic(studentToEdit?.cnic ?: "").length)
+            )
+        )
+    }
+    var fCnicValue by remember {
+        mutableStateOf(
+            TextFieldValue(
+                text = formatCnic(studentToEdit?.fCnic ?: ""),
+                selection = TextRange(formatCnic(studentToEdit?.fCnic ?: "").length)
+            )
+        )
+    }
+    val cnic = cnicValue.text
+    val fCnic = fCnicValue.text
     var enrolmentType by remember { mutableStateOf(studentToEdit?.enrolmentType ?: "Fresh") }
 
     // Dropdown status
@@ -646,8 +707,10 @@ fun StudentFormDialog(
 
                             // CNIC (Optional)
                             OutlinedTextField(
-                                value = cnic,
-                                onValueChange = { cnic = formatCnic(it) },
+                                value = cnicValue,
+                                onValueChange = { newValue -> 
+                                    cnicValue = getFormattedCnicValue(newValue)
+                                },
                                 label = { Text("CNIC (Optional)") },
                                 placeholder = { Text("12345-1234567-1") },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -677,8 +740,10 @@ fun StudentFormDialog(
 
                             // F_CNIC (Optional)
                             OutlinedTextField(
-                                value = fCnic,
-                                onValueChange = { fCnic = formatCnic(it) },
+                                value = fCnicValue,
+                                onValueChange = { newValue -> 
+                                    fCnicValue = getFormattedCnicValue(newValue)
+                                },
                                 label = { Text("Father CNIC (Optional)") },
                                 placeholder = { Text("12345-1234567-1") },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -822,8 +887,8 @@ fun StudentFormDialog(
                                         dob = tryParseAndFormatDate(dob),
                                         gender = gender,
                                         className = className,
-                                        cnic = if (cnic.isBlank()) null else cnic,
-                                        fCnic = if (fCnic.isBlank()) null else fCnic,
+                                        cnic = if (cnic.isBlank()) null else formatCnic(cnic),
+                                        fCnic = if (fCnic.isBlank()) null else formatCnic(fCnic),
                                         enrolmentType = enrolmentType
                                     )
                                 )
