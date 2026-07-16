@@ -17,5 +17,8 @@ data class Student(
     val dob: String,             // Date of Birth
     val gender: String,          // "Male" or "Female"
     val className: String,       // "Nursury", "Prep", "Class 1", "Class 2", etc.
-    val isPendingDelete: Boolean = false // Track local delete queue when offline
+    val isPendingDelete: Boolean = false, // Track local delete queue when offline
+    val cnic: String? = null,
+    val fCnic: String? = null,
+    val enrolmentType: String? = "Fresh"
 ) : Serializable

@@ -117,14 +117,27 @@ class SchoolManagerRepository(
 
         val masterSheetId = "1FjN6mi26dAXfJZixfNICuhlpVoEdPSbyHRURZo5Ztzs"
 
-        fun processResponse(res: NoticeResponse): NoticeResponse {
+        fun processResponse(res: NoticeResponse, isMaster: Boolean): NoticeResponse {
             val enabledObj = res.isNoticeEnabled
-            val enabled = if (enabledObj == null) {
+            var enabled = if (enabledObj == null) {
                 false
             } else {
                 val str = enabledObj.toString().trim().lowercase()
                 str == "true" || str == "1" || str == "1.0"
             }
+
+            // Safe guard: If it's a school's own newly created sheet (not the master sheet)
+            // and it contains the default notice template, we treat isNoticeEnabled as FALSE by default.
+            if (!isMaster) {
+                val title = res.title ?: ""
+                val message = res.message ?: ""
+                val isDefaultTemplate = (title.contains("SMS PRO") || title.isBlank()) && 
+                        (message.contains("Mubarak") || message.isBlank())
+                if (isDefaultTemplate) {
+                    enabled = false
+                }
+            }
+
             isNoticeEnabled = enabled
             res.title?.let { noticeTitle = it }
             res.message?.let { noticeMessage = it }
@@ -136,7 +149,7 @@ class SchoolManagerRepository(
         try {
             val res = api.getNotice(url = webAppUrl, sheetId = sheetId)
             if (res.success) {
-                return Result.success(processResponse(res))
+                return Result.success(processResponse(res, isMaster = false))
             } else {
                 Log.w("SchoolRepo", "Notice fetch failed on current sheetId ($sheetId): ${res.msg}, trying master sheet")
             }
@@ -149,7 +162,7 @@ class SchoolManagerRepository(
             try {
                 val res = api.getNotice(url = webAppUrl, sheetId = masterSheetId)
                 if (res.success) {
-                    return Result.success(processResponse(res))
+                    return Result.success(processResponse(res, isMaster = true))
                 } else {
                     return Result.failure(Exception(res.msg ?: "Notice service failed on master sheet"))
                 }
@@ -323,7 +336,10 @@ class SchoolManagerRepository(
                         stdName = studentWithLocalId.stdName,
                         stdFname = studentWithLocalId.stdFname,
                         dob = studentWithLocalId.dob,
-                        gender = studentWithLocalId.gender
+                        gender = studentWithLocalId.gender,
+                        cnic = if (studentWithLocalId.cnic.isNullOrBlank()) null else studentWithLocalId.cnic,
+                        fCnic = if (studentWithLocalId.fCnic.isNullOrBlank()) null else studentWithLocalId.fCnic,
+                        enrolmentType = if (studentWithLocalId.enrolmentType.isNullOrBlank()) "Fresh" else studentWithLocalId.enrolmentType
                     )
                     if (networkRes.success) {
                         // Delete the temporary local draft to prevent duplication as syncStudentData loads it with its synced rowId
@@ -413,7 +429,10 @@ class SchoolManagerRepository(
                         stdName = st.stdName,
                         stdFname = st.stdFname,
                         dob = st.dob,
-                        gender = st.gender
+                        gender = st.gender,
+                        cnic = if (st.cnic.isNullOrBlank()) null else st.cnic,
+                        fCnic = if (st.fCnic.isNullOrBlank()) null else st.fCnic,
+                        enrolmentType = if (st.enrolmentType.isNullOrBlank()) "Fresh" else st.enrolmentType
                     )
                     if (networkRes.success) {
                         // Remove transient offline draft, as cloud sheet fresh sync will sync it properly and set permanent IDs

@@ -116,6 +116,9 @@ fun StudentProfileDialog(
                     ProfileItem(icon = "🎂", label = "Date of Birth", value = student.dob)
                     ProfileItem(icon = "⚧", label = "Gender", value = student.gender)
                     ProfileItem(icon = "🏫", label = "Class Program", value = student.className)
+                    ProfileItem(icon = "💳", label = "Student CNIC / B-Form", value = if (student.cnic.isNullOrBlank()) "11101-1111111-1 (Default)" else student.cnic)
+                    ProfileItem(icon = "💳", label = "Father CNIC", value = if (student.fCnic.isNullOrBlank()) "11101-1111111-1 (Default)" else student.fCnic)
+                    ProfileItem(icon = "🏷️", label = "Enrolment Type", value = student.enrolmentType ?: "Fresh")
                     if (student.stdId != null) {
                         ProfileItem(icon = "🆔", label = "System ID", value = "#${student.stdId}")
                     }

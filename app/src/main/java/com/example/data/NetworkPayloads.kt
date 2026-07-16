@@ -45,7 +45,11 @@ data class NetworkStudent(
     val stdName: String? = null,
     val stdFname: String? = null,
     val dob: String? = null,
-    val gender: String? = null
+    val gender: String? = null,
+    val cnic: String? = null,
+    val fCnic: String? = null,
+    val enrolmentType: String? = null,
+    val enrolmentTypeLabel: String? = null
 ) {
     fun toDomainModel(className: String): Student {
         val parsedStdId = when (val id = stdId) {
@@ -58,6 +62,13 @@ data class NetworkStudent(
             is String -> no
             else -> ""
         }
+        val resolvedEnrolment = enrolmentTypeLabel ?: when (enrolmentType?.uppercase()?.trim()) {
+            "F" -> "Fresh"
+            "P" -> "Private"
+            "D" -> "Dropout"
+            "G" -> "Public"
+            else -> "Fresh"
+        }
         return Student(
             rowId = rowId,
             stdId = parsedStdId,
@@ -67,7 +78,10 @@ data class NetworkStudent(
             stdFname = stdFname ?: "",
             dob = dob ?: "",
             gender = gender ?: "Male",
-            className = className
+            className = className,
+            cnic = cnic ?: "",
+            fCnic = fCnic ?: "",
+            enrolmentType = resolvedEnrolment
         )
     }
 }

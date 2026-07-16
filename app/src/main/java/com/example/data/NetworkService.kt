@@ -49,7 +49,10 @@ interface NetworkService {
         @Query("stdName") stdName: String,
         @Query("stdFname") stdFname: String,
         @Query("dob") dob: String,
-        @Query("gender") gender: String
+        @Query("gender") gender: String,
+        @Query("cnic") cnic: String?,
+        @Query("fCnic") fCnic: String?,
+        @Query("enrolmentType") enrolmentType: String?
     ): ProcessResponse
 
     @GET

@@ -30,6 +30,21 @@ import com.example.data.Student
 import java.text.SimpleDateFormat
 import java.util.*
 
+fun formatCnic(input: String): String {
+    val digitsOnly = input.filter { it.isDigit() }.take(13)
+    val sb = StringBuilder()
+    for (i in digitsOnly.indices) {
+        if (i == 5) {
+            sb.append("-")
+        }
+        if (i == 12) {
+            sb.append("-")
+        }
+        sb.append(digitsOnly[i])
+    }
+    return sb.toString()
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StudentFormDialog(
@@ -48,6 +63,9 @@ fun StudentFormDialog(
     var stdFname by remember { mutableStateOf(studentToEdit?.stdFname ?: "") }
     var dob by remember { mutableStateOf(studentToEdit?.dob ?: "") }
     var gender by remember { mutableStateOf(studentToEdit?.gender ?: "Male") }
+    var cnic by remember { mutableStateOf(studentToEdit?.cnic ?: "") }
+    var fCnic by remember { mutableStateOf(studentToEdit?.fCnic ?: "") }
+    var enrolmentType by remember { mutableStateOf(studentToEdit?.enrolmentType ?: "Fresh") }
 
     // Dropdown status
     var classExpanded by remember { mutableStateOf(false) }
@@ -543,6 +561,129 @@ fun StudentFormDialog(
                                     }
                                 }
                             }
+
+                            // CNIC (Optional)
+                            OutlinedTextField(
+                                value = cnic,
+                                onValueChange = { cnic = formatCnic(it) },
+                                label = { Text("CNIC (Optional)") },
+                                placeholder = { Text("12345-1234567-1") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.CreditCard,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                },
+                                isError = cnic.isNotEmpty() && cnic.length != 15,
+                                supportingText = {
+                                    if (cnic.isNotEmpty() && cnic.length != 15) {
+                                        Text("Incomplete CNIC. Expected format: 12345-1234567-1", color = MaterialTheme.colorScheme.error)
+                                    }
+                                },
+                                shape = RoundedCornerShape(12.dp),
+                                singleLine = true,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("form_cnic_input"),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.6f)
+                                )
+                            )
+
+                            // F_CNIC (Optional)
+                            OutlinedTextField(
+                                value = fCnic,
+                                onValueChange = { fCnic = formatCnic(it) },
+                                label = { Text("Father CNIC (Optional)") },
+                                placeholder = { Text("12345-1234567-1") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.CreditCard,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                },
+                                isError = fCnic.isNotEmpty() && fCnic.length != 15,
+                                supportingText = {
+                                    if (fCnic.isNotEmpty() && fCnic.length != 15) {
+                                        Text("Incomplete Father CNIC. Expected format: 12345-1234567-1", color = MaterialTheme.colorScheme.error)
+                                    }
+                                },
+                                shape = RoundedCornerShape(12.dp),
+                                singleLine = true,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("form_f_cnic_input"),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.6f)
+                                )
+                            )
+
+                            // Enrolment Type Dropdown
+                            var enrolmentExpanded by remember { mutableStateOf(false) }
+                            ExposedDropdownMenuBox(
+                                expanded = enrolmentExpanded,
+                                onExpandedChange = { enrolmentExpanded = !enrolmentExpanded },
+                            ) {
+                                OutlinedTextField(
+                                    value = enrolmentType,
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    label = { Text("Enrolment Type *") },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.Assignment,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    },
+                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = enrolmentExpanded) },
+                                    shape = RoundedCornerShape(12.dp),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .menuAnchor()
+                                        .testTag("form_enrolment_selector"),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.6f)
+                                    )
+                                )
+                                ExposedDropdownMenu(
+                                    expanded = enrolmentExpanded,
+                                    onDismissRequest = { enrolmentExpanded = false }
+                                ) {
+                                    listOf("Fresh", "Private", "Dropout", "Public").forEach { type ->
+                                        DropdownMenuItem(
+                                            text = {
+                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                    Icon(
+                                                        imageVector = when(type) {
+                                                            "Fresh" -> Icons.Default.Star
+                                                            "Private" -> Icons.Default.Lock
+                                                            "Dropout" -> Icons.Default.Warning
+                                                            else -> Icons.Default.Public
+                                                        },
+                                                        contentDescription = null,
+                                                        tint = MaterialTheme.colorScheme.primary,
+                                                        modifier = Modifier.size(18.dp)
+                                                    )
+                                                    Spacer(modifier = Modifier.width(10.dp))
+                                                    Text(type, fontWeight = FontWeight.SemiBold)
+                                                }
+                                            },
+                                            onClick = {
+                                                enrolmentType = type
+                                                enrolmentExpanded = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -570,12 +711,17 @@ fun StudentFormDialog(
 
                     Spacer(modifier = Modifier.width(12.dp))
 
+                    val isCnicValid = cnic.isBlank() || cnic.length == 15
+                    val isFCnicValid = fCnic.isBlank() || fCnic.length == 15
+
                     val isFormValid = admNo.isNotBlank() && 
                                       admDate.isNotBlank() && 
                                       stdName.isNotBlank() && 
                                       stdFname.isNotBlank() && 
                                       dob.isNotBlank() && 
-                                      gender.isNotBlank()
+                                      gender.isNotBlank() &&
+                                      isCnicValid &&
+                                      isFCnicValid
 
                     Button(
                         onClick = {
@@ -591,7 +737,10 @@ fun StudentFormDialog(
                                         stdFname = stdFname,
                                         dob = dob,
                                         gender = gender,
-                                        className = className
+                                        className = className,
+                                        cnic = if (cnic.isBlank()) null else cnic,
+                                        fCnic = if (fCnic.isBlank()) null else fCnic,
+                                        enrolmentType = enrolmentType
                                     )
                                 )
                             }
