@@ -302,13 +302,19 @@ class SchoolManagerRepository(
     // Create / Update record
     suspend fun saveStudent(student: Student): Result<String> {
         // Save to local database (Room) FIRST!
-        val studentToSave = if (student.localId == 0L) {
+        val studentWithDefaults = student.copy(
+            cnic = if (student.cnic.isNullOrBlank()) "11101-1111111-1" else student.cnic,
+            fCnic = if (student.fCnic.isNullOrBlank()) "11101-1111111-1" else student.fCnic,
+            enrolmentType = if (student.enrolmentType.isNullOrBlank()) "Fresh" else student.enrolmentType
+        )
+
+        val studentToSave = if (studentWithDefaults.localId == 0L) {
             // Determine mock stdId for local parity
-            val currentInClass = studentDao.getStudentsByClassList(student.className)
+            val currentInClass = studentDao.getStudentsByClassList(studentWithDefaults.className)
             val nextStdId = (currentInClass.maxOfOrNull { it.stdId ?: 0 } ?: 0) + 1
-            student.copy(stdId = nextStdId, rowId = null)
+            studentWithDefaults.copy(stdId = nextStdId, rowId = null)
         } else {
-            student
+            studentWithDefaults
         }
 
         val savedLocalId = if (studentToSave.localId == 0L) {
@@ -339,9 +345,9 @@ class SchoolManagerRepository(
                         stdFname = studentWithLocalId.stdFname,
                         dob = studentWithLocalId.dob,
                         gender = studentWithLocalId.gender,
-                        cnic = if (studentWithLocalId.cnic.isNullOrBlank()) null else studentWithLocalId.cnic,
-                        fCnic = if (studentWithLocalId.fCnic.isNullOrBlank()) null else studentWithLocalId.fCnic,
-                        enrolmentType = if (studentWithLocalId.enrolmentType.isNullOrBlank()) "Fresh" else studentWithLocalId.enrolmentType
+                        cnic = if (studentWithLocalId.cnic.isNullOrBlank()) "11101-1111111-1" else studentWithLocalId.cnic,
+                        fCnic = if (studentWithLocalId.fCnic.isNullOrBlank()) "11101-1111111-1" else studentWithLocalId.fCnic,
+                        enrolmentType = mapEnrolmentToCode(studentWithLocalId.enrolmentType)
                     )
                     if (networkRes.success) {
                         // Delete the temporary local draft to prevent duplication as syncStudentData loads it with its synced rowId
@@ -433,9 +439,9 @@ class SchoolManagerRepository(
                         stdFname = st.stdFname,
                         dob = st.dob,
                         gender = st.gender,
-                        cnic = if (st.cnic.isNullOrBlank()) null else st.cnic,
-                        fCnic = if (st.fCnic.isNullOrBlank()) null else st.fCnic,
-                        enrolmentType = if (st.enrolmentType.isNullOrBlank()) "Fresh" else st.enrolmentType
+                        cnic = if (st.cnic.isNullOrBlank()) "11101-1111111-1" else st.cnic,
+                        fCnic = if (st.fCnic.isNullOrBlank()) "11101-1111111-1" else st.fCnic,
+                        enrolmentType = mapEnrolmentToCode(st.enrolmentType)
                     )
                     if (networkRes.success) {
                         // Remove transient offline draft, as cloud sheet fresh sync will sync it properly and set permanent IDs
@@ -529,5 +535,15 @@ class SchoolManagerRepository(
         studentDao.clearAll()
         // Reset active class to default
         activeClassPreference = "Nursury"
+    }
+
+    private fun mapEnrolmentToCode(enrolment: String?): String {
+        return when (enrolment?.uppercase()?.trim()) {
+            "FRESH", "F" -> "F"
+            "PRIVATE", "P" -> "P"
+            "DROPOUT", "D" -> "D"
+            "PUBLIC", "G" -> "G"
+            else -> "F"
+        }
     }
 }

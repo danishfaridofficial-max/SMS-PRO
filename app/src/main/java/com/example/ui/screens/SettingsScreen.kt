@@ -104,7 +104,7 @@ function doGet(e) {
         gender: e.parameter.gender,
         cnic: e.parameter.cnic || "",
         fCnic: e.parameter.fCnic || "",
-        enrolmentType: e.parameter.enrolmentType || "Fresh"
+        enrolmentType: e.parameter.enrolmentType || ""
       };
       const res = processStudent(obj);
       return respondJson(res);
@@ -215,9 +215,9 @@ function getStudentData(sheetId, className) {
       stdFname: row[4],
       dob: row[5] ? formatDateCustom(row[5]) : "",
       gender: row[6],
-      cnic: row[7] || "",
-      fCnic: row[8] || "",
-      enrolmentType: row[9] || "Fresh"
+      cnic: row[7] || "11101-1111111-1",
+      fCnic: row[8] || "11101-1111111-1",
+      enrolmentType: row[9] || "F"
     }));
   } catch(e) { return []; }
 }
@@ -248,6 +248,30 @@ function processStudent(obj) {
       const lastRow = sheet.getLastRow();
       finalStdId = (lastRow < 2) ? 1 : (Number(sheet.getRange(lastRow, 1).getValue()) || 0) + 1;
     }
+    
+    // Ensure CNIC / F_CNIC are not blank, default to "11101-1111111-1"
+    let finalCnic = obj.cnic ? obj.cnic.toString().trim() : "";
+    if (!finalCnic) {
+      finalCnic = "11101-1111111-1";
+    }
+    let finalFCnic = obj.fCnic ? obj.fCnic.toString().trim() : "";
+    if (!finalFCnic) {
+      finalFCnic = "11101-1111111-1";
+    }
+    
+    // Ensure enrolmentType is stored as short code: F, P, D, G
+    let finalEnrolment = "F";
+    const envUpper = (obj.enrolmentType || "F").toString().toUpperCase().trim();
+    if (envUpper === "PRIVATE" || envUpper === "P") {
+      finalEnrolment = "P";
+    } else if (envUpper === "DROPOUT" || envUpper === "D") {
+      finalEnrolment = "D";
+    } else if (envUpper === "PUBLIC" || envUpper === "G") {
+      finalEnrolment = "G";
+    } else {
+      finalEnrolment = "F";
+    }
+
     const values = [
       finalStdId, 
       obj.admNo, 
@@ -256,9 +280,9 @@ function processStudent(obj) {
       obj.stdFname, 
       parseDateForSheet(obj.dob), 
       obj.gender,
-      obj.cnic || "",
-      obj.fCnic || "",
-      obj.enrolmentType || "Fresh"
+      finalCnic,
+      finalFCnic,
+      finalEnrolment
     ];
     if (obj.rowId) {
       sheet.getRange(obj.rowId, 1, 1, 10).setValues([values]);

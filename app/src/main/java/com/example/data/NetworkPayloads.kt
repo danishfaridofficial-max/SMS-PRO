@@ -63,10 +63,10 @@ data class NetworkStudent(
             else -> ""
         }
         val resolvedEnrolment = enrolmentTypeLabel ?: when (enrolmentType?.uppercase()?.trim()) {
-            "F" -> "Fresh"
-            "P" -> "Private"
-            "D" -> "Dropout"
-            "G" -> "Public"
+            "F", "FRESH" -> "Fresh"
+            "P", "PRIVATE" -> "Private"
+            "D", "DROPOUT" -> "Dropout"
+            "G", "PUBLIC" -> "Public"
             else -> "Fresh"
         }
         return Student(
