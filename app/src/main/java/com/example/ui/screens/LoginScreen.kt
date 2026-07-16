@@ -214,24 +214,14 @@ fun LoginScreen(
                 }
             }
 
-            // Tip Banner for Demo Mode
-            if (!isCloudMode) {
-                Text(
-                    text = "Tip: Log in with username 'admin' and password 'admin' to try offline demo academy instantly.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.outline,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(top = 12.dp)
-                )
-            } else {
-                Text(
-                    text = "Syncing with Google Spreadsheet ID: ${repository.sheetId.take(12)}...",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(top = 12.dp)
-                )
-            }
+            // Synchronized status text
+            Text(
+                text = "Syncing with Google Spreadsheet Database",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 12.dp)
+            )
         }
     }
 }

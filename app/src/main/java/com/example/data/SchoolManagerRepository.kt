@@ -23,6 +23,8 @@ class SchoolManagerRepository(
     private val activeSavingLocalIds = java.util.Collections.synchronizedSet(mutableSetOf<Long>())
 
     init {
+        // Force is_cloud_mode to be true so we don't default to offline mode
+        prefs.edit().putBoolean("is_cloud_mode", true).apply()
         // Automatic migration of old WebApp URLs to the new active one
         val currentUrl = prefs.getString("web_app_url", "") ?: ""
         if (currentUrl.isEmpty() || currentUrl == "https://script.google.com/macros/s/AKfycbxxiBFBcc3uVqNyoED-13XNigqVV2HlPxgqujEHwLZfE5HTNBV8chuYbku6yTWr2e8y8Q/exec") {
@@ -55,7 +57,7 @@ class SchoolManagerRepository(
 
     // Configuration preferences
     var isCloudMode: Boolean
-        get() = prefs.getBoolean("is_cloud_mode", false)
+        get() = prefs.getBoolean("is_cloud_mode", true)
         set(value) = prefs.edit().putBoolean("is_cloud_mode", value).apply()
 
     var themePreference: String
