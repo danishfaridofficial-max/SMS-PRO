@@ -516,19 +516,21 @@ fun DashboardScreen(
                         modifier = Modifier.testTag("drawer_home_item")
                     )
 
-                    NavigationDrawerItem(
-                        icon = { Icon(imageVector = Icons.Default.Settings, contentDescription = "Settings") },
-                        label = { Text("Cloud Setup Settings", fontWeight = FontWeight.Bold) },
-                        selected = false,
-                        onClick = {
-                            coroutineScope.launch {
-                                drawerState.close()
-                                onNavigateToSettings()
-                            }
-                        },
-                        shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier.testTag("drawer_settings_item")
-                    )
+                    if (repository.username.lowercase() == "admin") {
+                        NavigationDrawerItem(
+                            icon = { Icon(imageVector = Icons.Default.Settings, contentDescription = "Settings") },
+                            label = { Text("Cloud Setup Settings", fontWeight = FontWeight.Bold) },
+                            selected = false,
+                            onClick = {
+                                coroutineScope.launch {
+                                    drawerState.close()
+                                    onNavigateToSettings()
+                                }
+                            },
+                            shape = RoundedCornerShape(14.dp),
+                            modifier = Modifier.testTag("drawer_settings_item")
+                        )
+                    }
 
                     NavigationDrawerItem(
                         icon = { Icon(imageVector = Icons.Default.AddCircle, contentDescription = "Enroll", tint = MaterialTheme.colorScheme.primary) },
@@ -728,7 +730,11 @@ fun DashboardScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .padding(
+                    start = innerPadding.calculateStartPadding(androidx.compose.ui.unit.LayoutDirection.Ltr),
+                    end = innerPadding.calculateEndPadding(androidx.compose.ui.unit.LayoutDirection.Ltr),
+                    bottom = innerPadding.calculateBottomPadding()
+                )
                 .background(MaterialTheme.colorScheme.background)
         ) {
             // Header panel (Modern and sharp layout)
@@ -736,7 +742,11 @@ fun DashboardScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(MaterialTheme.colorScheme.primary)
-                    .padding(horizontal = 20.dp, vertical = 16.dp)
+                    .padding(
+                        top = innerPadding.calculateTopPadding() + 16.dp,
+                        bottom = 16.dp
+                    )
+                    .padding(horizontal = 20.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -780,8 +790,10 @@ fun DashboardScreen(
                     }
 
                     Row {
-                        IconButton(onClick = onNavigateToSettings, modifier = Modifier.testTag("dashboard_settings_button")) {
-                            Icon(imageVector = Icons.Default.CloudQueue, contentDescription = "Sheets Syncer Settings", tint = Color.White)
+                        if (repository.username.lowercase() == "admin") {
+                            IconButton(onClick = onNavigateToSettings, modifier = Modifier.testTag("dashboard_settings_button")) {
+                                Icon(imageVector = Icons.Default.CloudQueue, contentDescription = "Sheets Syncer Settings", tint = Color.White)
+                            }
                         }
                         IconButton(onClick = onLogout, modifier = Modifier.testTag("logout_button")) {
                             Icon(imageVector = Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Logout Securely", tint = Color.White)

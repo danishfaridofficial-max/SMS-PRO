@@ -45,6 +45,68 @@ fun formatCnic(input: String): String {
     return sb.toString()
 }
 
+fun tryParseAndFormatDate(input: String): String {
+    val trimmed = input.trim()
+    if (trimmed.isEmpty()) return ""
+
+    val outFormatter = SimpleDateFormat("dd-MMM-yyyy", Locale.ENGLISH)
+
+    try {
+        val parsed = outFormatter.parse(trimmed)
+        if (parsed != null) {
+            return outFormatter.format(parsed)
+        }
+    } catch (e: Exception) {}
+
+    val candidateFormats = listOf(
+        "d/M/yyyy",
+        "dd/MM/yyyy",
+        "d-M-yyyy",
+        "dd-MM-yyyy",
+        "yyyy-MM-dd",
+        "d MMM yyyy",
+        "dd MMM yyyy",
+        "dd MMMM yyyy",
+        "d MMMM yyyy",
+        "dd-MMM-yy",
+        "d-M-yy",
+        "d/M/yy"
+    )
+
+    for (fmt in candidateFormats) {
+        try {
+            val parser = SimpleDateFormat(fmt, Locale.ENGLISH)
+            parser.isLenient = false
+            val parsed = parser.parse(trimmed)
+            if (parsed != null) {
+                val cal = Calendar.getInstance().apply { time = parsed }
+                var year = cal.get(Calendar.YEAR)
+                if (year < 100) {
+                    year += 2000
+                    cal.set(Calendar.YEAR, year)
+                }
+                if (year in 1900..2100) {
+                    return outFormatter.format(cal.time)
+                }
+            }
+        } catch (ignored: Exception) {}
+    }
+
+    return trimmed
+}
+
+fun isValidDateStr(input: String): Boolean {
+    val formatted = tryParseAndFormatDate(input)
+    if (formatted.isEmpty()) return false
+    return try {
+        val formatter = SimpleDateFormat("dd-MMM-yyyy", Locale.ENGLISH)
+        formatter.isLenient = false
+        formatter.parse(formatted) != null
+    } catch (e: Exception) {
+        false
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StudentFormDialog(
@@ -340,47 +402,57 @@ fun StudentFormDialog(
                                 )
                             )
 
-                            // ADM Date (Interactive Picker Box)
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        compileDatePickerForDob = false
-                                        showComposeDatePicker = true
-                                    }
-                            ) {
-                                OutlinedTextField(
-                                    value = admDate,
-                                    onValueChange = {},
-                                    readOnly = true,
-                                    enabled = false,
-                                    label = { Text("Admission Date *") },
-                                    leadingIcon = {
-                                        Icon(
-                                            imageVector = Icons.Default.CalendarMonth,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    },
-                                    trailingIcon = {
+                            // ADM Date (Manual Input + Picker Button)
+                            OutlinedTextField(
+                                value = admDate,
+                                onValueChange = { admDate = it },
+                                label = { Text("Admission Date *") },
+                                placeholder = { Text("e.g., 1/1/2026 or 01-Jan-2026") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.CalendarMonth,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                },
+                                trailingIcon = {
+                                    IconButton(
+                                        onClick = {
+                                            compileDatePickerForDob = false
+                                            showComposeDatePicker = true
+                                        }
+                                    ) {
                                         Icon(
                                             imageVector = Icons.Default.CalendarToday,
-                                            contentDescription = "Open Date Picker"
+                                            contentDescription = "Open Date Picker",
+                                            tint = MaterialTheme.colorScheme.primary
                                         )
-                                    },
-                                    shape = RoundedCornerShape(12.dp),
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .testTag("form_adm_date_input"),
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        disabledTextColor = MaterialTheme.colorScheme.onSurface,
-                                        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.6f),
-                                        disabledLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                                    }
+                                },
+                                isError = admDate.isNotEmpty() && !isValidDateStr(admDate),
+                                supportingText = {
+                                    if (admDate.isNotEmpty()) {
+                                        if (!isValidDateStr(admDate)) {
+                                            Text("Invalid date format. Use dd/mm/yyyy or dd-MMM-yyyy", color = MaterialTheme.colorScheme.error)
+                                        } else {
+                                            val converted = tryParseAndFormatDate(admDate)
+                                            if (converted != admDate) {
+                                                Text("Will be saved as: $converted", color = MaterialTheme.colorScheme.primary)
+                                            }
+                                        }
+                                    }
+                                },
+                                shape = RoundedCornerShape(12.dp),
+                                singleLine = true,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("form_adm_date_input"),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.6f)
                                 )
-                            }
+                            )
                         }
                     }
 
@@ -465,47 +537,57 @@ fun StudentFormDialog(
                                 )
                             )
 
-                            // Date of Birth (Interactive Picker Box)
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        compileDatePickerForDob = true
-                                        showComposeDatePicker = true
-                                    }
-                            ) {
-                                OutlinedTextField(
-                                    value = dob,
-                                    onValueChange = {},
-                                    readOnly = true,
-                                    enabled = false,
-                                    label = { Text("Date of Birth *") },
-                                    leadingIcon = {
-                                        Icon(
-                                            imageVector = Icons.Default.Cake,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    },
-                                    trailingIcon = {
+                            // Date of Birth (Manual Input + Picker Button)
+                            OutlinedTextField(
+                                value = dob,
+                                onValueChange = { dob = it },
+                                label = { Text("Date of Birth *") },
+                                placeholder = { Text("e.g., 1/1/2006 or 01-Jan-2006") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Cake,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                },
+                                trailingIcon = {
+                                    IconButton(
+                                        onClick = {
+                                            compileDatePickerForDob = true
+                                            showComposeDatePicker = true
+                                        }
+                                    ) {
                                         Icon(
                                             imageVector = Icons.Default.CalendarToday,
-                                            contentDescription = "Open Date Picker"
+                                            contentDescription = "Open Date Picker",
+                                            tint = MaterialTheme.colorScheme.primary
                                         )
-                                    },
-                                    shape = RoundedCornerShape(12.dp),
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .testTag("form_dob_input"),
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        disabledTextColor = MaterialTheme.colorScheme.onSurface,
-                                        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.6f),
-                                        disabledLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                                    }
+                                },
+                                isError = dob.isNotEmpty() && !isValidDateStr(dob),
+                                supportingText = {
+                                    if (dob.isNotEmpty()) {
+                                        if (!isValidDateStr(dob)) {
+                                            Text("Invalid date format. Use dd/mm/yyyy or dd-MMM-yyyy", color = MaterialTheme.colorScheme.error)
+                                        } else {
+                                            val converted = tryParseAndFormatDate(dob)
+                                            if (converted != dob) {
+                                                Text("Will be saved as: $converted", color = MaterialTheme.colorScheme.primary)
+                                            }
+                                        }
+                                    }
+                                },
+                                shape = RoundedCornerShape(12.dp),
+                                singleLine = true,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("form_dob_input"),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.6f)
                                 )
-                            }
+                            )
 
                             // Gender Dropdown
                             ExposedDropdownMenuBox(
@@ -713,12 +795,14 @@ fun StudentFormDialog(
 
                     val isCnicValid = cnic.isBlank() || cnic.length == 15
                     val isFCnicValid = fCnic.isBlank() || fCnic.length == 15
+                    val isAdmDateValid = admDate.isNotBlank() && isValidDateStr(admDate)
+                    val isDobValid = dob.isNotBlank() && isValidDateStr(dob)
 
                     val isFormValid = admNo.isNotBlank() && 
-                                      admDate.isNotBlank() && 
+                                      isAdmDateValid && 
                                       stdName.isNotBlank() && 
                                       stdFname.isNotBlank() && 
-                                      dob.isNotBlank() && 
+                                      isDobValid && 
                                       gender.isNotBlank() &&
                                       isCnicValid &&
                                       isFCnicValid
@@ -732,10 +816,10 @@ fun StudentFormDialog(
                                         rowId = studentToEdit?.rowId,
                                         stdId = studentToEdit?.stdId,
                                         admNo = admNo,
-                                        admDate = admDate,
+                                        admDate = tryParseAndFormatDate(admDate),
                                         stdName = stdName,
                                         stdFname = stdFname,
-                                        dob = dob,
+                                        dob = tryParseAndFormatDate(dob),
                                         gender = gender,
                                         className = className,
                                         cnic = if (cnic.isBlank()) null else cnic,

@@ -1,6 +1,7 @@
 package com.example.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -22,6 +23,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.SchoolManagerRepository
@@ -99,7 +101,10 @@ function doGet(e) {
         stdName: e.parameter.stdName,
         stdFname: e.parameter.stdFname,
         dob: e.parameter.dob,
-        gender: e.parameter.gender
+        gender: e.parameter.gender,
+        cnic: e.parameter.cnic || "",
+        fCnic: e.parameter.fCnic || "",
+        enrolmentType: e.parameter.enrolmentType || "Fresh"
       };
       const res = processStudent(obj);
       return respondJson(res);
@@ -122,15 +127,35 @@ function respondJson(responseObject) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-function formatDateCustom(dateStr) {
-  if (!dateStr) return "";
-  const date = new Date(dateStr);
-  if (isNaN(date.getTime())) return dateStr; // return original if parsing fails
+function formatDateCustom(dateVal) {
+  if (!dateVal) return "";
+  const date = new Date(dateVal);
+  if (isNaN(date.getTime())) return dateVal.toString(); // return original if parsing fails
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   const day = ("0" + date.getDate()).slice(-2);
   const month = months[date.getMonth()];
   const year = date.getFullYear();
   return day + "-" + month + "-" + year;
+}
+
+function parseDateForSheet(dateStr) {
+  if (!dateStr) return "";
+  const parts = dateStr.split("-");
+  if (parts.length === 3) {
+    const day = parseInt(parts[0], 10);
+    const monthStr = parts[1];
+    const year = parseInt(parts[2], 10);
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const monthIndex = months.findIndex(function(m) { return m.toLowerCase() === monthStr.toLowerCase(); });
+    if (monthIndex !== -1 && !isNaN(day) && !isNaN(year)) {
+      return new Date(year, monthIndex, day);
+    }
+  }
+  const parsed = new Date(dateStr);
+  if (!isNaN(parsed.getTime())) {
+    return parsed;
+  }
+  return dateStr;
 }
 
 // Check logins inside "Login" sheet
@@ -189,7 +214,10 @@ function getStudentData(sheetId, className) {
       stdName: row[3],
       stdFname: row[4],
       dob: row[5] ? formatDateCustom(row[5]) : "",
-      gender: row[6]
+      gender: row[6],
+      cnic: row[7] || "",
+      fCnic: row[8] || "",
+      enrolmentType: row[9] || "Fresh"
     }));
   } catch(e) { return []; }
 }
@@ -213,16 +241,27 @@ function processStudent(obj) {
     var sheet = ss.getSheetByName(obj.className);
     if (!sheet) {
       sheet = ss.insertSheet(obj.className);
-      sheet.appendRow(["STD_ID", "ADM_NO", "ADM_DATE", "STD_NAME", "STD_FNAME", "DOB", "GENDER"]);
+      sheet.appendRow(["STD_ID", "ADM_NO", "ADM_DATE", "STD_NAME", "STD_FNAME", "DOB", "GENDER", "CNIC", "F_CNIC", "ENROLMENT_TYPE"]);
     }
     let finalStdId = obj.stdId;
     if (!obj.rowId) {
       const lastRow = sheet.getLastRow();
       finalStdId = (lastRow < 2) ? 1 : (Number(sheet.getRange(lastRow, 1).getValue()) || 0) + 1;
     }
-    const values = [finalStdId, obj.admNo, formatDateCustom(obj.admDate), obj.stdName, obj.stdFname, formatDateCustom(obj.dob), obj.gender];
+    const values = [
+      finalStdId, 
+      obj.admNo, 
+      parseDateForSheet(obj.admDate), 
+      obj.stdName, 
+      obj.stdFname, 
+      parseDateForSheet(obj.dob), 
+      obj.gender,
+      obj.cnic || "",
+      obj.fCnic || "",
+      obj.enrolmentType || "Fresh"
+    ];
     if (obj.rowId) {
-      sheet.getRange(obj.rowId, 1, 1, 7).setValues([values]);
+      sheet.getRange(obj.rowId, 1, 1, 10).setValues([values]);
       resequenceStudentIds(sheet);
       return { success: true, msg: "Record updated successfully" };
     } else {
@@ -310,7 +349,9 @@ function getNotice(sheetId) {
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            // Setup Explainer Banner
+            val isAdmin = repository.username.lowercase() == "admin"
+            if (isAdmin) {
+                // Setup Explainer Banner
             Card(
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
@@ -450,183 +491,7 @@ function getNotice(sheetId) {
                 }
             }
 
-            // App Appearance Theme Settings Card
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Palette,
-                            contentDescription = "Theme palette",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            text = "App Theme Settings",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "When Battery Saver Mode is ON, Android automatically switches systems to Dark Mode. Choose Always Light Theme below if you prefer bright status colors.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
 
-                    HorizontalDivider(modifier = Modifier.padding(bottom = 12.dp))
-
-                    // Option 1: System Theme
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                themePref = "system"
-                                repository.themePreference = "system"
-                                onThemeChanged("system")
-                            }
-                            .padding(vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        RadioButton(
-                            selected = (themePref == "system"),
-                            onClick = {
-                                themePref = "system"
-                                repository.themePreference = "system"
-                                onThemeChanged("system")
-                            },
-                            modifier = Modifier.testTag("theme_system_radio")
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                "System Default (Auto)",
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Text(
-                                "Adapts to battery saver or system dark mode settings.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.outline
-                            )
-                        }
-                        Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = "System Theme",
-                            tint = MaterialTheme.colorScheme.outline,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-
-                    // Option 2: Always Light Theme
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                themePref = "light"
-                                repository.themePreference = "light"
-                                onThemeChanged("light")
-                            }
-                            .padding(vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        RadioButton(
-                            selected = (themePref == "light"),
-                            onClick = {
-                                themePref = "light"
-                                repository.themePreference = "light"
-                                onThemeChanged("light")
-                            },
-                            modifier = Modifier.testTag("theme_light_radio")
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    "Always Light Theme",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Card(
-                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
-                                    shape = RoundedCornerShape(4.dp)
-                                ) {
-                                    Text(
-                                        "RECOMMENDED",
-                                        fontSize = 9.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                    )
-                                }
-                            }
-                            Text(
-                                "Forces standard clean white background colors, even during Battery Saver mode.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.outline
-                            )
-                        }
-                        Icon(
-                            imageVector = Icons.Default.LightMode,
-                            contentDescription = "Light Theme",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-
-                    // Option 3: Always Dark Theme
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                themePref = "dark"
-                                repository.themePreference = "dark"
-                                onThemeChanged("dark")
-                            }
-                            .padding(vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        RadioButton(
-                            selected = (themePref == "dark"),
-                            onClick = {
-                                themePref = "dark"
-                                repository.themePreference = "dark"
-                                onThemeChanged("dark")
-                            },
-                            modifier = Modifier.testTag("theme_dark_radio")
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                "Always Dark Theme",
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Text(
-                                "Locks in the dark blue/slate backgrounds.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.outline
-                            )
-                        }
-                        Icon(
-                            imageVector = Icons.Default.DarkMode,
-                            contentDescription = "Dark Theme",
-                            tint = MaterialTheme.colorScheme.outline,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
-            }
 
             // Custom Notice / Announcement Banner Settings Card
             Card(
@@ -872,6 +737,40 @@ function getNotice(sheetId) {
                                 }
                             }
                         }
+                    }
+                }
+            }
+            } else {
+                // Access Restricted Card
+                Card(
+                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f)),
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.3f))
+                ) {
+                    Column(
+                        modifier = Modifier.padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Lock,
+                            contentDescription = "Access Restricted",
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(64.dp)
+                        )
+                        Text(
+                            text = "Access Restricted",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                        Text(
+                            text = "Google Sheets Database Synchronization aur global configurations sirf Admin user hi tabdeel kar sakte hain. Normal users ko iski ijazat nahi hai.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             }

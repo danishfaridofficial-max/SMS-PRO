@@ -179,39 +179,7 @@ fun LoginScreen(
                             .testTag("password_input")
                     )
 
-                    // Cloud Mode status display
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = "Use Cloud Sync",
-                                style = MaterialTheme.typography.bodySmall,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            IconButton(onClick = onNavigateToSettings) {
-                                Icon(
-                                    imageVector = Icons.Default.Settings,
-                                    contentDescription = "Cloud Setup",
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            }
-                        }
 
-                        // Switches isCloudMode preference locally
-                        Switch(
-                            checked = isCloudMode,
-                            onCheckedChange = {
-                                isCloudMode = it
-                                repository.isCloudMode = it
-                            },
-                            modifier = Modifier.testTag("login_cloud_toggle")
-                        )
-                    }
 
                     // Feedbacks
                     if (feedbackMessage.isNotEmpty()) {
