@@ -85,7 +85,7 @@ class SchoolManagerRepository(
         set(value) = prefs.edit().putBoolean("is_logged_in", value).apply()
 
     var activeClassPreference: String
-        get() = prefs.getString("active_class_preference", "Class 1") ?: "Class 1"
+        get() = prefs.getString("active_class_preference", "Nursury") ?: "Nursury"
         set(value) = prefs.edit().putString("active_class_preference", value).apply()
 
     var studentSortOrderPreference: Int
@@ -414,6 +414,7 @@ class SchoolManagerRepository(
                 return Result.success(syncCount)
             }
             
+            val classesToSync = mutableSetOf<String>()
             val totalCount = unsynced.size
             for ((index, st) in unsynced.withIndex()) {
                 // Report progress before sync task begins
@@ -440,6 +441,7 @@ class SchoolManagerRepository(
                         // Remove transient offline draft, as cloud sheet fresh sync will sync it properly and set permanent IDs
                         studentDao.deleteStudentByLocalId(st.localId)
                         syncCount++
+                        classesToSync.add(st.className)
                     } else {
                         Log.e("SchoolRepo", "Failed to upload specific record: ${st.stdName} (Reason: ${networkRes.msg})")
                     }
@@ -450,11 +452,17 @@ class SchoolManagerRepository(
                 // Rate-throttling courtesy delay
                 kotlinx.coroutines.delay(150)
             }
-            // Trigger fresh class sync to keep client absolutely updated
-            try {
-                syncStudentData(currentClass)
-            } catch (ignore: Exception) {
-                Log.e("SchoolRepo", "Ignored roster fetch exception during finalize sync", ignore)
+            
+            // Always include the current visible class in sync to be safe
+            classesToSync.add(currentClass)
+            
+            // Trigger fresh class sync for all updated classes to keep client absolutely updated
+            for (cls in classesToSync) {
+                try {
+                    syncStudentData(cls)
+                } catch (ignore: Exception) {
+                    Log.e("SchoolRepo", "Ignored roster fetch exception during finalize sync for class $cls", ignore)
+                }
             }
             return Result.success(syncCount)
         } catch (e: Exception) {
@@ -520,6 +528,6 @@ class SchoolManagerRepository(
         isDashboardLoadedPreference = false
         studentDao.clearAll()
         // Reset active class to default
-        activeClassPreference = "Class 1"
+        activeClassPreference = "Nursury"
     }
 }
