@@ -199,22 +199,26 @@ fun DashboardScreen(
     }
 
     // Auto-sync routine: triggers instantly when internet comes back or when app starts online
-    LaunchedEffect(isOnline, unsyncedTotal) {
-        if (isOnline && unsyncedTotal > 0 && repository.isCloudMode && !isAutoSyncing) {
-            isAutoSyncing = true
-            try {
-                val syncRes = repository.syncOfflineRecords(selectedClass)
-                syncRes.onSuccess { syncedCount ->
-                    if (syncedCount > 0) {
-                        performSyncData()
+    LaunchedEffect(isOnline) {
+        if (isOnline) {
+            snapshotFlow { unsyncedTotal }.collect { total ->
+                if (total > 0 && repository.isCloudMode && !isAutoSyncing) {
+                    isAutoSyncing = true
+                    try {
+                        val syncRes = repository.syncOfflineRecords(selectedClass)
+                        syncRes.onSuccess { syncedCount ->
+                            if (syncedCount > 0) {
+                                performSyncData()
+                            }
+                        }.onFailure { err ->
+                            Log.e("ConnectivityAutoSync", "Offline automatic sync failed background thread run", err)
+                        }
+                    } catch (ex: Exception) {
+                        Log.e("ConnectivityAutoSync", "Unhandled auto-sync exception loop", ex)
+                    } finally {
+                        isAutoSyncing = false
                     }
-                }.onFailure { err ->
-                    Log.e("ConnectivityAutoSync", "Offline automatic sync failed background thread run", err)
                 }
-            } catch (ex: Exception) {
-                Log.e("ConnectivityAutoSync", "Unhandled auto-sync exception loop", ex)
-            } finally {
-                isAutoSyncing = false
             }
         }
     }
@@ -285,17 +289,24 @@ fun DashboardScreen(
         showFormDialog = false
         studentToEdit = null
         coroutineScope.launch {
-            val res = repository.saveStudent(stud)
-            res.onSuccess { successMsg ->
-                successDialogTitle = if (stud.localId == 0L) "Student Registered!" else "Student Updated!"
-                successDialogMessage = successMsg
-                showSuccessDialog = true
-                // Fetch the newest records in background
-                performSyncData()
-            }.onFailure { error ->
-                errorDialogTitle = "Draft Saved Offline"
-                errorDialogMessage = error.message ?: "Your record was saved locally as a draft but could not be uploaded to Google Sheets yet."
-                showErrorDialog = true
+            loadingState = true
+            loaderMessage = "Saving and syncing student..."
+            try {
+                val res = repository.saveStudent(stud)
+                res.onSuccess { successMsg ->
+                    successDialogTitle = if (stud.localId == 0L) "Student Registered!" else "Student Updated!"
+                    successDialogMessage = successMsg
+                    showSuccessDialog = true
+                    // Fetch the newest records in background
+                    performSyncData()
+                }.onFailure { error ->
+                    errorDialogTitle = "Draft Saved Offline"
+                    errorDialogMessage = error.message ?: "Your record was saved locally as a draft but could not be uploaded to Google Sheets yet."
+                    showErrorDialog = true
+                }
+            } finally {
+                loadingState = false
+                loaderMessage = ""
             }
         }
     }
@@ -305,17 +316,24 @@ fun DashboardScreen(
         val stud = studentToDelete ?: return
         studentToDelete = null
         coroutineScope.launch {
-            val res = repository.deleteStudent(stud)
-            res.onSuccess { successMsg ->
-                successDialogTitle = "Student Record Deleted"
-                successDialogMessage = successMsg
-                showSuccessDialog = true
-                // Fetch the newest records in background
-                performSyncData()
-            }.onFailure { error ->
-                errorDialogTitle = "Delete Error"
-                errorDialogMessage = error.message ?: "An error occurred while deleting the student record."
-                showErrorDialog = true
+            loadingState = true
+            loaderMessage = "Deleting student record..."
+            try {
+                val res = repository.deleteStudent(stud)
+                res.onSuccess { successMsg ->
+                    successDialogTitle = "Student Record Deleted"
+                    successDialogMessage = successMsg
+                    showSuccessDialog = true
+                    // Fetch the newest records in background
+                    performSyncData()
+                }.onFailure { error ->
+                    errorDialogTitle = "Delete Error"
+                    errorDialogMessage = error.message ?: "An error occurred while deleting the student record."
+                    showErrorDialog = true
+                }
+            } finally {
+                loadingState = false
+                loaderMessage = ""
             }
         }
     }
@@ -1324,92 +1342,115 @@ fun DashboardScreen(
                                     )
                                     .padding(28.dp)
                             ) {
-                                // Dynamic layered graphics representing an illustration
-                                Box(
-                                    modifier = Modifier.size(90.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
+                                if (isAutoSyncing || loadingState) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(48.dp),
+                                        strokeWidth = 3.dp,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Text(
+                                        text = "Fetching students list...",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Text(
+                                        text = "Google Sheets se dynamic data pull ho raha hai. Baraye meherbani intezar farmayein.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                        modifier = Modifier.padding(horizontal = 12.dp)
+                                    )
+                                } else {
+                                    // Dynamic layered graphics representing an illustration
                                     Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .background(
-                                                brush = Brush.radialGradient(
-                                                    colors = listOf(
-                                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                                                        Color.Transparent
+                                        modifier = Modifier.size(90.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .background(
+                                                    brush = Brush.radialGradient(
+                                                        colors = listOf(
+                                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                                            Color.Transparent
+                                                        )
                                                     )
                                                 )
-                                            )
-                                    )
-                                    Surface(
-                                        shape = CircleShape,
-                                        color = MaterialTheme.colorScheme.surface,
-                                        shadowElevation = 4.dp,
-                                        modifier = Modifier.size(56.dp)
-                                    ) {
-                                        Box(contentAlignment = Alignment.Center) {
-                                            Icon(
-                                                imageVector = if (searchQuery.isNotBlank()) Icons.Default.Search else Icons.Default.School,
-                                                contentDescription = "Empty illustration",
-                                                tint = MaterialTheme.colorScheme.primary,
-                                                modifier = Modifier.size(28.dp)
-                                            )
+                                        )
+                                        Surface(
+                                            shape = CircleShape,
+                                            color = MaterialTheme.colorScheme.surface,
+                                            shadowElevation = 4.dp,
+                                            modifier = Modifier.size(56.dp)
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                Icon(
+                                                    imageVector = if (searchQuery.isNotBlank()) Icons.Default.Search else Icons.Default.School,
+                                                    contentDescription = "Empty illustration",
+                                                    tint = MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier.size(28.dp)
+                                                )
+                                            }
                                         }
                                     }
-                                }
-                                
-                                Spacer(modifier = Modifier.height(16.dp))
-                                
-                                Text(
-                                    text = if (searchQuery.isNotBlank()) "Koyi Record Nahi Mila" else "Class Khali Hai",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                
-                                Spacer(modifier = Modifier.height(6.dp))
-                                
-                                Text(
-                                    text = if (searchQuery.isNotBlank()) {
-                                        "Sahi spelling ya kisi aur class me student search karkay dekhain."
-                                    } else {
-                                        "Is class me koi student registered nahi hai. Naye records submit karne k liye niche click kijiye."
-                                    },
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                                    lineHeight = 16.sp,
-                                    modifier = Modifier.padding(horizontal = 12.dp)
-                                )
-                                
-                                if (searchQuery.isBlank()) {
-                                    Spacer(modifier = Modifier.height(20.dp))
-                                    Button(
-                                        onClick = {
-                                            studentToEdit = null
-                                            showFormDialog = true
+                                    
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    
+                                    Text(
+                                        text = if (searchQuery.isNotBlank()) "Koyi Record Nahi Mila" else "Class Khali Hai",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    
+                                    Text(
+                                        text = if (searchQuery.isNotBlank()) {
+                                            "Sahi spelling ya kisi aur class me student search karkay dekhain."
+                                        } else {
+                                            "Is class me koi student registered nahi hai. Naye records submit karne k liye niche click kijiye."
                                         },
-                                        shape = RoundedCornerShape(12.dp),
-                                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
-                                        modifier = Modifier.testTag("empty_state_add_student_button")
-                                    ) {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                        lineHeight = 16.sp,
+                                        modifier = Modifier.padding(horizontal = 12.dp)
+                                    )
+                                    
+                                    if (searchQuery.isBlank()) {
+                                        Spacer(modifier = Modifier.height(20.dp))
+                                        Button(
+                                            onClick = {
+                                                studentToEdit = null
+                                                showFormDialog = true
+                                            },
+                                            shape = RoundedCornerShape(12.dp),
+                                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
+                                            modifier = Modifier.testTag("empty_state_add_student_button")
                                         ) {
-                                            Icon(
-                                                imageVector = Icons.Default.Add,
-                                                contentDescription = "Add Student icon",
-                                                tint = Color.White,
-                                                modifier = Modifier.size(16.dp)
-                                            )
-                                            Text(
-                                                text = "ENROLL FIRST STUDENT",
-                                                fontSize = 11.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = Color.White
-                                            )
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Add,
+                                                    contentDescription = "Add Student icon",
+                                                    tint = Color.White,
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                                Text(
+                                                    text = "ENROLL FIRST STUDENT",
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = Color.White
+                                                )
+                                            }
                                         }
                                     }
                                 }
